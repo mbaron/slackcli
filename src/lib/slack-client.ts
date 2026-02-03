@@ -189,5 +189,24 @@ export class SlackClient {
       name
     });
   }
+
+  // List all users in workspace
+  async listUsers(options: {
+    cursor?: string;
+    limit?: number;
+    include_locale?: boolean;
+  } = {}): Promise<any> {
+    const params: Record<string, any> = {};
+    if (options.cursor) params.cursor = options.cursor;
+    if (options.limit) params.limit = options.limit;
+    if (options.include_locale !== undefined) params.include_locale = options.include_locale;
+
+    return this.request('users.list', params);
+  }
+
+  // Lookup user by email
+  async lookupUserByEmail(email: string): Promise<any> {
+    return this.request('users.lookupByEmail', { email });
+  }
 }
 

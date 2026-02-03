@@ -52,12 +52,28 @@ export interface SlackChannel {
 
 export interface SlackUser {
   id: string;
+  team_id?: string;
   name?: string;
   real_name?: string;
+  deleted?: boolean;
+  is_admin?: boolean;
+  is_owner?: boolean;
+  is_bot?: boolean;
+  is_app_user?: boolean;
+  tz?: string;
+  tz_label?: string;
   profile?: {
     email?: string;
     display_name?: string;
+    display_name_normalized?: string;
     real_name?: string;
+    real_name_normalized?: string;
+    title?: string;
+    status_text?: string;
+    status_emoji?: string;
+    image_24?: string;
+    image_48?: string;
+    image_72?: string;
   };
 }
 
