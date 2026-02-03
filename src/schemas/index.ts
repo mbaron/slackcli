@@ -38,7 +38,7 @@ export const ConversationListOutputSchema = z.object({
     topic: z.string().optional(),
     user_id: z.string().optional(), // for DMs
   })),
-  users: z.record(UserInfoSchema).optional(),
+  users: z.record(z.string(), UserInfoSchema).optional(),
 });
 export type ConversationListOutput = z.infer<typeof ConversationListOutputSchema>;
 
@@ -59,7 +59,7 @@ export const ConversationReadOutputSchema = z.object({
     })).optional(),
     bot_id: z.string().optional(),
   })),
-  users: z.record(UserInfoSchema).optional(),
+  users: z.record(z.string(), UserInfoSchema).optional(),
 });
 export type ConversationReadOutput = z.infer<typeof ConversationReadOutputSchema>;
 
@@ -91,3 +91,40 @@ export const UpdateCheckOutputSchema = z.object({
   update_available: z.boolean(),
 });
 export type UpdateCheckOutput = z.infer<typeof UpdateCheckOutputSchema>;
+
+// User profile (shared)
+const UserProfileSchema = z.object({
+  id: z.string(),
+  name: z.string().optional(),
+  real_name: z.string().optional(),
+  display_name: z.string().optional(),
+  email: z.string().optional(),
+  title: z.string().optional(),
+  is_bot: z.boolean().optional(),
+  is_admin: z.boolean().optional(),
+  deleted: z.boolean().optional(),
+  tz: z.string().optional(),
+});
+
+// Users list output
+export const UserListOutputSchema = z.object({
+  users: z.array(UserProfileSchema),
+  total_count: z.number(),
+  has_more: z.boolean(),
+  next_cursor: z.string().optional(),
+});
+export type UserListOutput = z.infer<typeof UserListOutputSchema>;
+
+// Users search output
+export const UserSearchOutputSchema = z.object({
+  query: z.string(),
+  users: z.array(UserProfileSchema),
+  match_count: z.number(),
+});
+export type UserSearchOutput = z.infer<typeof UserSearchOutputSchema>;
+
+// Users info output
+export const UserInfoOutputSchema = z.object({
+  user: UserProfileSchema,
+});
+export type UserInfoOutput = z.infer<typeof UserInfoOutputSchema>;

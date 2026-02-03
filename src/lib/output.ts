@@ -1,15 +1,17 @@
-import { ZodSchema } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import ora, { Ora } from 'ora';
 
 export type OutputFormat = 'json' | 'pretty' | 'schema';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyZodSchema = any;
 
 /**
  * Output data in the specified format
  */
 export function output<T>(
   data: T,
-  schema: ZodSchema<T>,
+  schema: AnyZodSchema,
   format: OutputFormat,
   prettyFormatter: (data: T) => string
 ): void {
@@ -29,7 +31,7 @@ export function output<T>(
 /**
  * Output schema only (for --format=schema before data is fetched)
  */
-export function outputSchema<T>(schema: ZodSchema<T>): void {
+export function outputSchema(schema: AnyZodSchema): void {
   console.log(JSON.stringify(zodToJsonSchema(schema), null, 2));
 }
 
