@@ -13,6 +13,22 @@ import chalk from 'chalk';
 import { parseCurlCommand, CurlParseError, looksLikeCurlCommand } from '../lib/curl-parser.ts';
 import { readClipboard } from '../lib/clipboard.ts';
 import { readInteractiveInput, isInteractiveTerminal, hasPipedInput } from '../lib/interactive-input.ts';
+import {
+  WorkspaceListOutputSchema,
+  ParseCurlOutputSchema,
+  type WorkspaceListOutput,
+  type ParseCurlOutput,
+} from '../schemas/index.ts';
+import {
+  type OutputFormat,
+  output,
+  outputSchema,
+  createSpinner,
+  succeedSpinner,
+  failSpinner,
+  addFormatOption,
+  validateFormat,
+} from '../lib/output.ts';
 
 export function createAuthCommand(): Command {
   const auth = new Command('auth')
@@ -79,31 +95,63 @@ export function createAuthCommand(): Command {
     });
 
   // List all workspaces
-  auth
+  const listCmd = auth
     .command('list')
     .description('List all authenticated workspaces')
-    .action(async () => {
+    .action(async (options) => {
+      const format = validateFormat(options.format);
+
+      // For schema format, just output the schema and exit
+      if (format === 'schema') {
+        outputSchema(WorkspaceListOutputSchema);
+        return;
+      }
+
       try {
         const workspaces = await getAllWorkspaces();
         const defaultId = await getDefaultWorkspaceId();
 
-        if (workspaces.length === 0) {
+        if (workspaces.length === 0 && format === 'pretty') {
           info('No authenticated workspaces found.');
           info('Run "slackcli auth login" or "slackcli auth login-browser" to authenticate.');
           return;
         }
 
-        console.log(chalk.bold(`\n📋 Authenticated Workspaces (${workspaces.length}):\n`));
+        // Build output data
+        const outputData: WorkspaceListOutput = {
+          workspaces: workspaces.map(ws => ({
+            workspace_id: ws.workspace_id,
+            workspace_name: ws.workspace_name,
+            auth_type: ws.auth_type,
+            is_default: ws.workspace_id === defaultId,
+          })),
+        };
 
-        workspaces.forEach((ws, idx) => {
-          const isDefault = ws.workspace_id === defaultId;
-          console.log(`${idx + 1}. ${formatWorkspace(ws, isDefault)}\n`);
+        output(outputData, WorkspaceListOutputSchema, format, (data) => {
+          if (data.workspaces.length === 0) {
+            return 'No authenticated workspaces found.\nRun "slackcli auth login" or "slackcli auth login-browser" to authenticate.';
+          }
+
+          let result = chalk.bold(`\n📋 Authenticated Workspaces (${data.workspaces.length}):\n`);
+
+          data.workspaces.forEach((ws, idx) => {
+            const isDefault = ws.is_default;
+            const defaultBadge = isDefault ? chalk.green('(default)') : '';
+            const authType = ws.auth_type === 'browser' ? '🌐 Browser' : '🔑 Standard';
+
+            result += `\n${idx + 1}. ${chalk.bold(ws.workspace_name)} ${defaultBadge}
+   ID: ${ws.workspace_id}
+   Auth: ${authType}\n`;
+          });
+
+          return result;
         });
       } catch (err: any) {
         error('Failed to list workspaces', err.message);
         process.exit(1);
       }
     });
+  addFormatOption(listCmd);
 
   // Set default workspace
   auth
@@ -177,36 +225,49 @@ export function createAuthCommand(): Command {
     });
 
   // Parse cURL command to extract tokens
-  auth
+  const parseCurlCmd = auth
     .command('parse-curl')
     .description('Extract xoxd and xoxc tokens from a cURL command')
     .argument('[curl-command]', 'cURL command (or use --from-clipboard / interactive mode)')
     .option('--login', 'Automatically login with extracted tokens')
     .option('--from-clipboard', 'Read cURL command from system clipboard')
     .action(async (curlCommand, options) => {
+      const format = validateFormat(options.format);
+
+      // For schema format, just output the schema and exit
+      if (format === 'schema') {
+        outputSchema(ParseCurlOutputSchema);
+        return;
+      }
+
       try {
         let curlInput = curlCommand;
 
         // Get input from various sources (in priority order)
         if (!curlInput && options.fromClipboard) {
-          const spinner = ora('Reading from clipboard...').start();
+          const spinner = createSpinner('Reading from clipboard...', format);
+
           const clipboardResult = await readClipboard();
 
           if (!clipboardResult.success) {
-            spinner.fail('Failed to read clipboard');
+            failSpinner(spinner, 'Failed to read clipboard');
             error(clipboardResult.error || 'Unknown clipboard error');
-            console.log(chalk.yellow('\n💡 Tip: Try the interactive mode instead:'));
-            console.log(chalk.cyan('   slackcli auth parse-curl --login\n'));
+            if (format === 'pretty') {
+              console.log(chalk.yellow('\n💡 Tip: Try the interactive mode instead:'));
+              console.log(chalk.cyan('   slackcli auth parse-curl --login\n'));
+            }
             process.exit(1);
           }
 
           curlInput = clipboardResult.content || '';
-          spinner.succeed('Read from clipboard');
+          succeedSpinner(spinner, 'Read from clipboard');
 
           if (!looksLikeCurlCommand(curlInput)) {
             error('Clipboard content does not appear to be a cURL command');
-            console.log(chalk.yellow('\n💡 Tip: Make sure you copied the cURL command from browser DevTools'));
-            console.log(chalk.yellow('   Right-click on request → Copy → Copy as cURL\n'));
+            if (format === 'pretty') {
+              console.log(chalk.yellow('\n💡 Tip: Make sure you copied the cURL command from browser DevTools'));
+              console.log(chalk.yellow('   Right-click on request → Copy → Copy as cURL\n'));
+            }
             process.exit(1);
           }
         } else if (!curlInput && hasPipedInput()) {
@@ -235,51 +296,73 @@ export function createAuthCommand(): Command {
           process.exit(1);
         }
 
-        console.log(chalk.bold('\n🔍 Parsing cURL command...\n'));
+        if (format === 'pretty') {
+          console.log(chalk.bold('\n🔍 Parsing cURL command...\n'));
+        }
 
         // Parse the cURL command
         const parsed = parseCurlCommand(curlInput);
 
-        // Display extracted tokens
-        success('✅ Successfully extracted tokens!\n');
-        console.log(chalk.bold('Workspace:'));
-        console.log(`  Name: ${chalk.cyan(parsed.workspaceName)}`);
-        console.log(`  URL:  ${chalk.cyan(parsed.workspaceUrl)}\n`);
-
-        console.log(chalk.bold('Tokens:'));
-        console.log(`  xoxd: ${chalk.green(parsed.xoxd.substring(0, 20))}...${chalk.gray(`(${parsed.xoxd.length} chars)`)}`);
-        console.log(`  xoxc: ${chalk.green(parsed.xoxc.substring(0, 20))}...${chalk.gray(`(${parsed.xoxc.length} chars)`)}\n`);
+        // Build output data
+        const outputData: ParseCurlOutput = {
+          workspace_name: parsed.workspaceName,
+          workspace_url: parsed.workspaceUrl,
+          xoxd_token: parsed.xoxd,
+          xoxc_token: parsed.xoxc,
+        };
 
         // If --login flag is set, authenticate directly
         if (options.login) {
-          const spinner = ora('Authenticating with extracted tokens...').start();
+          const spinner = createSpinner('Authenticating with extracted tokens...', format);
           try {
             const config = await authenticateBrowser(parsed.xoxd, parsed.xoxc, parsed.workspaceUrl, parsed.workspaceName);
-            spinner.succeed('Authentication successful!');
-            success(`Authenticated as workspace: ${config.workspace_name}`);
-            info(`Workspace ID: ${config.workspace_id}`);
+            succeedSpinner(spinner, 'Authentication successful!');
+
+            if (format === 'pretty') {
+              success(`Authenticated as workspace: ${config.workspace_name}`);
+              info(`Workspace ID: ${config.workspace_id}`);
+            } else {
+              // For json format, output the parsed data
+              output(outputData, ParseCurlOutputSchema, format, () => '');
+            }
           } catch (err: any) {
-            spinner.fail('Authentication failed');
+            failSpinner(spinner, 'Authentication failed');
             error(err.message);
             process.exit(1);
           }
         } else {
-          console.log(chalk.bold('To login with these tokens, run:\n'));
-          console.log(chalk.cyan('  slackcli auth parse-curl --login'));
-          console.log(chalk.gray('\nOr manually:\n'));
-          console.log(`  slackcli auth login-browser \\`);
-          console.log(`    --xoxd="${parsed.xoxd}" \\`);
-          console.log(`    --xoxc="${parsed.xoxc}" \\`);
-          console.log(`    --workspace-url="${parsed.workspaceUrl}"\n`);
+          // Output the parsed data
+          output(outputData, ParseCurlOutputSchema, format, (data) => {
+            let result = chalk.green('✅ Successfully extracted tokens!\n');
+            result += chalk.bold('\nWorkspace:\n');
+            result += `  Name: ${chalk.cyan(data.workspace_name)}\n`;
+            result += `  URL:  ${chalk.cyan(data.workspace_url)}\n`;
+
+            result += chalk.bold('\nTokens:\n');
+            result += `  xoxd: ${chalk.green(data.xoxd_token.substring(0, 20))}...${chalk.gray(`(${data.xoxd_token.length} chars)`)}\n`;
+            result += `  xoxc: ${chalk.green(data.xoxc_token.substring(0, 20))}...${chalk.gray(`(${data.xoxc_token.length} chars)`)}\n`;
+
+            result += chalk.bold('\nTo login with these tokens, run:\n');
+            result += chalk.cyan('\n  slackcli auth parse-curl --login\n');
+            result += chalk.gray('\nOr manually:\n');
+            result += `\n  slackcli auth login-browser \\`;
+            result += `\n    --xoxd="${data.xoxd_token}" \\`;
+            result += `\n    --xoxc="${data.xoxc_token}" \\`;
+            result += `\n    --workspace-url="${data.workspace_url}"\n`;
+
+            return result;
+          });
         }
       } catch (err: any) {
         error('Failed to parse cURL command', err.message);
-        console.log(chalk.yellow('\n💡 Tip: Right-click on a Slack API request in browser DevTools'));
-        console.log(chalk.yellow('   → Copy → Copy as cURL, then paste here\n'));
+        if (format === 'pretty') {
+          console.log(chalk.yellow('\n💡 Tip: Right-click on a Slack API request in browser DevTools'));
+          console.log(chalk.yellow('   → Copy → Copy as cURL, then paste here\n'));
+        }
         process.exit(1);
       }
     });
+  addFormatOption(parseCurlCmd);
 
   return auth;
 }
-

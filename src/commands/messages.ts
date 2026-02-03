@@ -1,14 +1,30 @@
 import { Command } from 'commander';
-import ora from 'ora';
 import { getAuthenticatedClient } from '../lib/auth.ts';
 import { success, error } from '../lib/formatter.ts';
+import {
+  MessageSendOutputSchema,
+  MessageReactOutputSchema,
+  type MessageSendOutput,
+  type MessageReactOutput,
+} from '../schemas/index.ts';
+import {
+  type OutputFormat,
+  output,
+  outputSchema,
+  createSpinner,
+  updateSpinner,
+  succeedSpinner,
+  failSpinner,
+  addFormatOption,
+  validateFormat,
+} from '../lib/output.ts';
 
 export function createMessagesCommand(): Command {
   const messages = new Command('messages')
     .description('Send and manage messages');
 
   // Send message
-  messages
+  const sendCmd = messages
     .command('send')
     .description('Send a message to a channel or user')
     .requiredOption('--recipient-id <id>', 'Channel ID or User ID')
@@ -16,7 +32,15 @@ export function createMessagesCommand(): Command {
     .option('--thread-ts <timestamp>', 'Send as reply to thread')
     .option('--workspace <id|name>', 'Workspace to use')
     .action(async (options) => {
-      const spinner = ora('Sending message...').start();
+      const format = validateFormat(options.format);
+
+      // For schema format, just output the schema and exit
+      if (format === 'schema') {
+        outputSchema(MessageSendOutputSchema);
+        return;
+      }
+
+      const spinner = createSpinner('Sending message...', format);
 
       try {
         const client = await getAuthenticatedClient(options.workspace);
@@ -24,27 +48,42 @@ export function createMessagesCommand(): Command {
         // Check if recipient is a user ID (starts with U) and needs DM opened
         let channelId = options.recipientId;
         if (options.recipientId.startsWith('U')) {
-          spinner.text = 'Opening direct message...';
+          updateSpinner(spinner, 'Opening direct message...');
           const dmResponse = await client.openConversation(options.recipientId);
           channelId = dmResponse.channel.id;
         }
 
-        spinner.text = 'Sending message...';
+        updateSpinner(spinner, 'Sending message...');
         const response = await client.postMessage(channelId, options.message, {
           thread_ts: options.threadTs,
         });
 
-        spinner.succeed('Message sent successfully!');
-        success(`Message timestamp: ${response.ts}`);
+        succeedSpinner(spinner, 'Message sent successfully!');
+
+        // Build output data
+        const outputData: MessageSendOutput = {
+          ok: true,
+          channel: channelId,
+          ts: response.ts,
+          message: response.message ? {
+            text: response.message.text || options.message,
+            ts: response.message.ts || response.ts,
+          } : undefined,
+        };
+
+        output(outputData, MessageSendOutputSchema, format, (data) => {
+          return `Message timestamp: ${data.ts}`;
+        });
       } catch (err: any) {
-        spinner.fail('Failed to send message');
+        failSpinner(spinner, 'Failed to send message');
         error(err.message);
         process.exit(1);
       }
     });
+  addFormatOption(sendCmd);
 
   // Add reaction to message
-  messages
+  const reactCmd = messages
     .command('react')
     .description('Add a reaction to a message')
     .requiredOption('--channel-id <id>', 'Channel ID where the message is')
@@ -52,22 +91,41 @@ export function createMessagesCommand(): Command {
     .requiredOption('--emoji <name>', 'Emoji name (e.g., thumbsup, heart, fire)')
     .option('--workspace <id|name>', 'Workspace to use')
     .action(async (options) => {
-      const spinner = ora('Adding reaction...').start();
+      const format = validateFormat(options.format);
+
+      // For schema format, just output the schema and exit
+      if (format === 'schema') {
+        outputSchema(MessageReactOutputSchema);
+        return;
+      }
+
+      const spinner = createSpinner('Adding reaction...', format);
 
       try {
         const client = await getAuthenticatedClient(options.workspace);
 
         await client.addReaction(options.channelId, options.timestamp, options.emoji);
 
-        spinner.succeed('Reaction added successfully!');
-        success(`Added :${options.emoji}: to message ${options.timestamp}`);
+        succeedSpinner(spinner, 'Reaction added successfully!');
+
+        // Build output data
+        const outputData: MessageReactOutput = {
+          ok: true,
+          channel: options.channelId,
+          timestamp: options.timestamp,
+          emoji: options.emoji,
+        };
+
+        output(outputData, MessageReactOutputSchema, format, (data) => {
+          return `Added :${data.emoji}: to message ${data.timestamp}`;
+        });
       } catch (err: any) {
-        spinner.fail('Failed to add reaction');
+        failSpinner(spinner, 'Failed to add reaction');
         error(err.message);
         process.exit(1);
       }
     });
+  addFormatOption(reactCmd);
 
   return messages;
 }
-
