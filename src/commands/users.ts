@@ -23,19 +23,34 @@ import {
   validateFormat,
 } from '../lib/output.ts';
 
-function formatUserForOutput(user: SlackUser) {
-  return {
-    id: user.id,
-    name: user.name,
-    real_name: user.real_name || user.profile?.real_name,
-    display_name: user.profile?.display_name,
-    email: user.profile?.email,
-    title: user.profile?.title,
-    is_bot: user.is_bot,
-    is_admin: user.is_admin,
-    deleted: user.deleted,
-    tz: user.tz,
-  };
+type UserOutput = {
+  id: string;
+  name?: string;
+  real_name?: string;
+  display_name?: string;
+  email?: string;
+  title?: string;
+  is_bot?: boolean;
+  is_admin?: boolean;
+  deleted?: boolean;
+  tz?: string;
+};
+
+function formatUserForOutput(user: SlackUser): UserOutput {
+  const result: UserOutput = { id: user.id };
+
+  if (user.name) result.name = user.name;
+  const realName = user.real_name || user.profile?.real_name;
+  if (realName) result.real_name = realName;
+  if (user.profile?.display_name) result.display_name = user.profile.display_name;
+  if (user.profile?.email) result.email = user.profile.email;
+  if (user.profile?.title) result.title = user.profile.title;
+  if (user.is_bot) result.is_bot = true;
+  if (user.is_admin) result.is_admin = true;
+  if (user.deleted) result.deleted = true;
+  if (user.tz) result.tz = user.tz;
+
+  return result;
 }
 
 function formatUserPretty(user: SlackUser): string {
@@ -63,7 +78,8 @@ export function createUsersCommand(): Command {
   const listCmd = users
     .command('list')
     .description('List all users in the workspace')
-    .option('--limit <number>', 'Maximum number of users to return', '100')
+    .option('--limit <number>', 'Maximum number of users to return per page', '200')
+    .option('--all', 'Fetch all users (paginate through all results)', false)
     .option('--include-bots', 'Include bot users', false)
     .option('--include-deleted', 'Include deactivated users', false)
     .option('--cursor <cursor>', 'Pagination cursor for next page')
@@ -81,12 +97,37 @@ export function createUsersCommand(): Command {
       try {
         const client = await getAuthenticatedClient(options.workspace);
 
-        const response = await client.listUsers({
-          limit: parseInt(options.limit),
-          cursor: options.cursor,
-        });
+        let members: SlackUser[] = [];
+        let nextCursor: string | undefined = options.cursor;
+        let hasMore = false;
 
-        let members: SlackUser[] = response.members || [];
+        if (options.all) {
+          // Paginate through all users
+          do {
+            updateSpinner(spinner, `Fetching users${nextCursor ? ' (loading more...)' : ''}...`);
+            const response = await client.listUsers({
+              limit: parseInt(options.limit),
+              cursor: nextCursor,
+            });
+
+            const pageMembers: SlackUser[] = response.members || [];
+            members = members.concat(pageMembers);
+
+            nextCursor = response.response_metadata?.next_cursor;
+          } while (nextCursor);
+
+          hasMore = false;
+        } else {
+          // Single page fetch
+          const response = await client.listUsers({
+            limit: parseInt(options.limit),
+            cursor: options.cursor,
+          });
+
+          members = response.members || [];
+          nextCursor = response.response_metadata?.next_cursor;
+          hasMore = !!nextCursor;
+        }
 
         // Filter out bots unless requested
         if (!options.includeBots) {
@@ -97,9 +138,6 @@ export function createUsersCommand(): Command {
         if (!options.includeDeleted) {
           members = members.filter((u: SlackUser) => !u.deleted);
         }
-
-        const nextCursor = response.response_metadata?.next_cursor;
-        const hasMore = !!nextCursor;
 
         succeedSpinner(spinner, `Found ${members.length} users`);
 
