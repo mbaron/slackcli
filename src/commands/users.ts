@@ -288,10 +288,10 @@ export function createUsersCommand(): Command {
   // Get user info
   const infoCmd = users
     .command('info')
-    .description('Get detailed information about a user')
-    .argument('<user-id>', 'User ID (e.g., U01234567)')
+    .description('Get detailed information about one or more users')
+    .argument('<user-ids...>', 'User ID(s) (e.g., U01234567 U09876543)')
     .option('--workspace <id|name>', 'Workspace to use')
-    .action(async (userId, options) => {
+    .action(async (userIds: string[], options) => {
       const format = validateFormat(options.format);
 
       if (format === 'schema') {
@@ -299,46 +299,78 @@ export function createUsersCommand(): Command {
         return;
       }
 
-      const spinner = createSpinner('Fetching user info...', format);
+      const isSingle = userIds.length === 1;
+      const spinner = createSpinner(
+        isSingle ? 'Fetching user info...' : `Fetching ${userIds.length} users...`,
+        format
+      );
 
       try {
         const client = await getAuthenticatedClient(options.workspace);
 
-        const response = await client.getUserInfo(userId);
-        const user: SlackUser = response.user;
+        const users: SlackUser[] = [];
+        const errors: string[] = [];
 
-        succeedSpinner(spinner, 'User found');
+        for (const userId of userIds) {
+          try {
+            const response = await client.getUserInfo(userId);
+            users.push(response.user);
+          } catch (err: any) {
+            errors.push(`${userId}: ${err.message}`);
+          }
+        }
+
+        if (users.length === 0) {
+          failSpinner(spinner, 'No users found');
+          errors.forEach(e => error(e));
+          process.exit(1);
+        }
+
+        succeedSpinner(spinner, `Found ${users.length} user${users.length > 1 ? 's' : ''}`);
+
+        if (errors.length > 0) {
+          errors.forEach(e => console.error(chalk.yellow(`Warning: ${e}`)));
+        }
 
         const outputData: UserInfoOutput = {
-          user: formatUserForOutput(user),
+          users: users.map(formatUserForOutput),
         };
 
         output(outputData, UserInfoOutputSchema, format, (data) => {
-          const u = data.user;
-          const handle = u.name ? `@${u.name}` : '';
-          const displayName = u.display_name || u.real_name || u.name || 'Unknown';
+          let result = '';
 
-          let result = chalk.bold(`\n👤 User Profile\n`);
-          result += `\n${chalk.bold('Name:')} ${displayName} ${chalk.cyan(handle)}`;
-          result += `\n${chalk.bold('ID:')} ${u.id}`;
+          data.users.forEach((u, idx) => {
+            const handle = u.name ? `@${u.name}` : '';
+            const displayName = u.display_name || u.real_name || u.name || 'Unknown';
 
-          if (u.email) result += `\n${chalk.bold('Email:')} ${u.email}`;
-          if (u.title) result += `\n${chalk.bold('Title:')} ${u.title}`;
-          if (u.tz) result += `\n${chalk.bold('Timezone:')} ${u.tz}`;
+            if (data.users.length > 1) {
+              result += chalk.bold(`\n👤 User ${idx + 1}/${data.users.length}\n`);
+            } else {
+              result += chalk.bold(`\n👤 User Profile\n`);
+            }
+            result += `\n${chalk.bold('Name:')} ${displayName} ${chalk.cyan(handle)}`;
+            result += `\n${chalk.bold('ID:')} ${u.id}`;
 
-          const roles: string[] = [];
-          if (u.is_admin) roles.push('Admin');
-          if (u.is_bot) roles.push('Bot');
-          if (u.deleted) roles.push('Deactivated');
+            if (u.email) result += `\n${chalk.bold('Email:')} ${u.email}`;
+            if (u.title) result += `\n${chalk.bold('Title:')} ${u.title}`;
+            if (u.tz) result += `\n${chalk.bold('Timezone:')} ${u.tz}`;
 
-          if (roles.length > 0) {
-            result += `\n${chalk.bold('Status:')} ${roles.join(', ')}`;
-          }
+            const roles: string[] = [];
+            if (u.is_admin) roles.push('Admin');
+            if (u.is_bot) roles.push('Bot');
+            if (u.deleted) roles.push('Deactivated');
 
-          return result + '\n';
+            if (roles.length > 0) {
+              result += `\n${chalk.bold('Status:')} ${roles.join(', ')}`;
+            }
+
+            result += '\n';
+          });
+
+          return result;
         });
       } catch (err: any) {
-        failSpinner(spinner, 'Failed to fetch user');
+        failSpinner(spinner, 'Failed to fetch users');
         error(err.message);
         process.exit(1);
       }

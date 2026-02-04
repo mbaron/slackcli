@@ -123,9 +123,9 @@ export const UserSearchOutputSchema = z.object({
 });
 export type UserSearchOutput = z.infer<typeof UserSearchOutputSchema>;
 
-// Users info output
+// Users info output (supports single or multiple users)
 export const UserInfoOutputSchema = z.object({
-  user: UserProfileSchema,
+  users: z.array(UserProfileSchema),
 });
 export type UserInfoOutput = z.infer<typeof UserInfoOutputSchema>;
 

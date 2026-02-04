@@ -110,6 +110,28 @@ describe('users smoke tests', () => {
       expect(infoResponse.user.profile).toBeDefined();
     });
 
+    it('should fetch info for multiple users', async () => {
+      if (skipTests) return;
+
+      // Get multiple user IDs from the list
+      const listResponse = await client.listUsers({ limit: 3 });
+      const userIds = listResponse.members.map((m: SlackUser) => m.id);
+
+      // Fetch each user's info
+      const users: SlackUser[] = [];
+      for (const userId of userIds) {
+        const infoResponse = await client.getUserInfo(userId);
+        expect(infoResponse.ok).toBe(true);
+        users.push(infoResponse.user);
+      }
+
+      // Verify we got all users with correct IDs
+      expect(users.length).toBe(userIds.length);
+      users.forEach((user, idx) => {
+        expect(user.id).toBe(userIds[idx]);
+      });
+    });
+
     it('should return error for invalid user ID', async () => {
       if (skipTests) return;
 

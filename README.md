@@ -8,6 +8,8 @@ A fast, developer-friendly command-line interface tool for interacting with Slac
 - 🎯 **Easy Token Extraction**: Automatically parse tokens from browser cURL commands
 - 🏢 **Multi-Workspace Management**: Manage multiple Slack workspaces with ease
 - 💬 **Conversation Management**: List channels, read messages, send messages
+- 🔍 **Message Search**: Full Slack search with query modifiers (from:, in:, has:, date filters)
+- 👥 **User Management**: List, search, and lookup users (single or batch)
 - 🎉 **Message Reactions**: Add emoji reactions to messages programmatically
 - 🚀 **Fast & Lightweight**: Built with Bun for blazing fast performance
 - 🔄 **Auto-Update**: Built-in self-update mechanism
@@ -189,6 +191,52 @@ slackcli messages react --channel-id=C1234567890 --timestamp=1234567890.123456 -
 - `tada` - 🎉
 - `rocket` - 🚀
 
+### User Commands
+
+```bash
+# List all users in the workspace
+slackcli users list
+
+# List all users including bots
+slackcli users list --include-bots
+
+# Search users by name, handle, or email
+slackcli users search "john"
+
+# Get info for a single user
+slackcli users info U1234567890
+
+# Get info for multiple users (batch lookup)
+slackcli users info U1234567890 U0987654321 U1122334455
+
+# Pretty output
+slackcli users info U1234567890 U0987654321 --format pretty
+```
+
+### Search Commands
+
+```bash
+# Search messages by keyword
+slackcli search messages "deployment failed"
+
+# Search with filters
+slackcli search messages "error" --channel production --from alice
+
+# Search with date range
+slackcli search messages "bug fix after:2024-01-01 before:2024-06-01"
+
+# Pagination
+slackcli search messages "test" --count 50 --page 2
+```
+
+**Query modifiers** (use directly in the query string):
+- `from:@user` - Messages from a specific user
+- `in:#channel` - Messages in a specific channel
+- `has:link` / `has:star` / `has:pin` - Messages with links, stars, or pins
+- `before:` / `after:` / `on:` - Date filters (YYYY-MM-DD)
+- `"exact phrase"` - Exact phrase match
+- `-term` - Exclude term from results
+
 ### Update Commands
 
 ```bash
@@ -252,6 +300,8 @@ slackcli/
 │   │   ├── auth.ts
 │   │   ├── conversations.ts
 │   │   ├── messages.ts
+│   │   ├── search.ts
+│   │   ├── users.ts
 │   │   └── update.ts
 │   ├── lib/                  # Core library
 │   │   ├── auth.ts
@@ -259,6 +309,8 @@ slackcli/
 │   │   ├── slack-client.ts
 │   │   ├── formatter.ts
 │   │   └── updater.ts
+│   ├── schemas/              # Zod schemas for output
+│   │   └── index.ts
 │   └── types/                # Type definitions
 │       └── index.ts
 ├── .github/workflows/        # CI/CD
