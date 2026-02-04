@@ -208,5 +208,23 @@ export class SlackClient {
   async lookupUserByEmail(email: string): Promise<any> {
     return this.request('users.lookupByEmail', { email });
   }
+
+  // Search messages
+  async searchMessages(query: string, options: {
+    sort?: 'score' | 'timestamp';
+    sort_dir?: 'asc' | 'desc';
+    count?: number;
+    page?: number;
+    highlight?: boolean;
+  } = {}): Promise<any> {
+    const params: Record<string, any> = { query };
+    if (options.sort) params.sort = options.sort;
+    if (options.sort_dir) params.sort_dir = options.sort_dir;
+    if (options.count) params.count = options.count;
+    if (options.page) params.page = options.page;
+    if (options.highlight !== undefined) params.highlight = options.highlight;
+
+    return this.request('search.messages', params);
+  }
 }
 

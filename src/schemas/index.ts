@@ -128,3 +128,26 @@ export const UserInfoOutputSchema = z.object({
   user: UserProfileSchema,
 });
 export type UserInfoOutput = z.infer<typeof UserInfoOutputSchema>;
+
+// Search message match
+const SearchMessageMatchSchema = z.object({
+  ts: z.string(),
+  text: z.string(),
+  username: z.string().optional(),
+  user: z.string().optional(),
+  channel: z.object({
+    id: z.string(),
+    name: z.string().optional(),
+  }),
+  permalink: z.string().optional(),
+});
+
+// Search messages output
+export const SearchMessagesOutputSchema = z.object({
+  query: z.string(),
+  messages: z.array(SearchMessageMatchSchema),
+  total: z.number(),
+  page: z.number(),
+  page_count: z.number(),
+});
+export type SearchMessagesOutput = z.infer<typeof SearchMessagesOutputSchema>;
