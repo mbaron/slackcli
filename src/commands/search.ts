@@ -50,9 +50,9 @@ function formatTimestamp(ts: string): string {
 
 const SEARCH_MODIFIERS_HELP = `
 Query Modifiers (use in query string):
-  from:@user          Messages from a specific user
-  in:#channel         Messages in a specific channel
-  in:@user            Messages in DM with user
+  from:@user          Messages from a specific user (requires @ prefix)
+  in:#channel         Messages in a specific channel (requires # prefix)
+  in:@user            Messages in DM with user (requires @ prefix)
   to:@me              Messages sent to you
   has:link            Messages containing links
   has:star            Messages you've starred
@@ -67,6 +67,10 @@ Query Modifiers (use in query string):
   -term               Exclude term from results
   term1 AND term2     Both terms must match
   term1 OR term2      Either term matches
+
+Note: User modifiers (from:, in:@, to:) require the @ prefix followed by the
+user's display name or handle (e.g., from:@john.doe). Use 'slackcli users search'
+to find the correct name before searching.
 
 Examples:
   slackcli search messages "deployment failed"
