@@ -161,6 +161,10 @@ const SearchMessageMatchSchema = z.object({
     name: z.string().optional(),
   }),
   permalink: z.string().optional(),
+  // Thread-related fields
+  thread_ts: z.string().optional(),
+  reply_count: z.number().optional(),
+  is_thread_reply: z.boolean().optional(),
 });
 
 // Search messages output
