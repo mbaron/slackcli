@@ -1,6 +1,7 @@
 import { Command } from 'commander';
-import { writeFile, access, mkdir } from 'fs/promises';
+import { writeFile, access, mkdir, mkdtemp } from 'fs/promises';
 import { join, resolve } from 'path';
+import { tmpdir } from 'os';
 import { getAuthenticatedClient } from '../lib/auth.ts';
 import { error, formatChannelList, formatConversationHistory, formatFileSize } from '../lib/formatter.ts';
 import type { SlackChannel, SlackMessage, SlackUser } from '../types/index.ts';
@@ -135,7 +136,7 @@ export function createConversationsCommand(): Command {
     .option('--oldest <timestamp>', 'Start of time range')
     .option('--latest <timestamp>', 'End of time range')
     .option('--download-files', 'Download file attachments from messages', false)
-    .option('--output-dir <path>', 'Directory to save downloaded files', '.')
+    .option('--output-dir <path>', 'Directory to save downloaded files (defaults to temp directory)')
     .option('--workspace <id|name>', 'Workspace to use')
     .action(async (channelId, options) => {
       const format = validateFormat(options.format);
@@ -241,8 +242,16 @@ export function createConversationsCommand(): Command {
         if (options.downloadFiles) {
           const allFiles = messages.flatMap(msg => msg.files || []);
           if (allFiles.length > 0) {
-            const outputDir = resolve(options.outputDir);
-            await mkdir(outputDir, { recursive: true });
+            // Create temp directory if --output-dir not specified
+            const outputDir = options.outputDir
+              ? resolve(options.outputDir)
+              : await mkdtemp(join(tmpdir(), 'slackcli-downloads-'));
+
+            // Ensure directory exists (if user-specified)
+            if (options.outputDir) {
+              await mkdir(outputDir, { recursive: true });
+            }
+
             updateSpinner(spinner, `Downloading ${allFiles.length} file(s)...`);
 
             const downloadedFiles: Array<{ file_id: string; name: string; path: string; size: number }> = [];

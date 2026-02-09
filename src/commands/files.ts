@@ -1,6 +1,7 @@
 import { Command } from 'commander';
-import { writeFile, access, mkdir } from 'fs/promises';
+import { writeFile, access, mkdir, mkdtemp } from 'fs/promises';
 import { join, resolve } from 'path';
+import { tmpdir } from 'os';
 import chalk from 'chalk';
 import { getAuthenticatedClient } from '../lib/auth.ts';
 import { error, formatFileSize, formatTimestamp } from '../lib/formatter.ts';
@@ -110,7 +111,7 @@ export function createFilesCommand(): Command {
     .command('download')
     .description('Download one or more files')
     .argument('<file-ids...>', 'File ID(s) to download')
-    .option('--output-dir <path>', 'Directory to save files to', '.')
+    .option('--output-dir <path>', 'Directory to save files to (defaults to temp directory)')
     .option('--workspace <id|name>', 'Workspace to use')
     .action(async (fileIds: string[], options) => {
       const format = validateFormat(options.format);
@@ -121,11 +122,17 @@ export function createFilesCommand(): Command {
       }
 
       const spinner = createSpinner(`Downloading ${fileIds.length} file(s)...`, format);
-      const outputDir = resolve(options.outputDir);
+
+      // Create temp directory if --output-dir not specified
+      const outputDir = options.outputDir
+        ? resolve(options.outputDir)
+        : await mkdtemp(join(tmpdir(), 'slackcli-downloads-'));
 
       try {
-        // Ensure output directory exists
-        await mkdir(outputDir, { recursive: true });
+        // Ensure output directory exists (if user-specified)
+        if (options.outputDir) {
+          await mkdir(outputDir, { recursive: true });
+        }
 
         const client = await getAuthenticatedClient(options.workspace);
 
