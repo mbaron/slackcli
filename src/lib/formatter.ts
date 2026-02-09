@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import type { SlackChannel, SlackMessage, SlackUser, WorkspaceConfig } from '../types/index.ts';
+import type { SlackChannel, SlackFile, SlackMessage, SlackUser, WorkspaceConfig } from '../types/index.ts';
 
 // Format timestamp to human-readable date
 export function formatTimestamp(ts: string): string {
@@ -123,11 +123,23 @@ export function formatMessage(
     output += `${indentStr}  ${chalk.dim(reactionsStr)}\n`;
   }
   
+  // Files
+  if (msg.files && msg.files.length > 0) {
+    msg.files.forEach(f => {
+      const sizeStr = f.size ? ` (${formatFileSize(f.size)})` : '';
+      const typeStr = f.mimetype ? ` [${f.mimetype}]` : '';
+      output += `${indentStr}  ${chalk.yellow('📎')} ${chalk.underline(f.name)}${typeStr}${sizeStr}\n`;
+      if (f.permalink) {
+        output += `${indentStr}     ${chalk.dim(f.permalink)}\n`;
+      }
+    });
+  }
+
   // Thread indicator
   if (msg.reply_count && !isThread) {
     output += `${indentStr}  ${chalk.cyan(`💬 ${msg.reply_count} replies`)}\n`;
   }
-  
+
   return output;
 }
 
@@ -170,5 +182,13 @@ export function info(message: string): void {
 // Warning message
 export function warning(message: string): void {
   console.log(chalk.yellow('⚠️'), message);
+}
+
+// Format file size to human-readable string
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
 

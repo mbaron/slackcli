@@ -226,5 +226,79 @@ export class SlackClient {
 
     return this.request('search.messages', params);
   }
+
+  // Download a file from Slack (handles auth for both standard and browser tokens)
+  async downloadFile(url: string): Promise<{ buffer: ArrayBuffer; contentType: string }> {
+    const headers: Record<string, string> = {};
+
+    if (this.config.auth_type === 'standard') {
+      headers['Authorization'] = `Bearer ${this.config.token}`;
+    } else {
+      const encodedXoxdToken = encodeURIComponent(this.config.xoxd_token);
+      headers['Cookie'] = `d=${encodedXoxdToken}`;
+      headers['Origin'] = 'https://app.slack.com';
+      headers['User-Agent'] = 'Mozilla/5.0 (compatible; SlackCLI/0.1.0)';
+    }
+
+    const response = await fetch(url, { headers });
+
+    if (!response.ok) {
+      throw new Error(`Failed to download file: HTTP ${response.status} ${response.statusText}`);
+    }
+
+    const buffer = await response.arrayBuffer();
+    const contentType = response.headers.get('content-type') || 'application/octet-stream';
+
+    return { buffer, contentType };
+  }
+
+  // Get file info
+  async getFileInfo(fileId: string): Promise<any> {
+    return this.request('files.info', { file: fileId });
+  }
+
+  // List files in a channel
+  async listFiles(options: {
+    channel?: string;
+    user?: string;
+    types?: string;
+    count?: number;
+    page?: number;
+  } = {}): Promise<any> {
+    const params: Record<string, any> = {};
+    if (options.channel) params.channel = options.channel;
+    if (options.user) params.user = options.user;
+    if (options.types) params.types = options.types;
+    if (options.count) params.count = options.count;
+    if (options.page) params.page = options.page;
+
+    return this.request('files.list', params);
+  }
+
+  // Search messages using modules API (browser auth only, supports searching all public channels)
+  async searchModulesMessages(query: string, options: {
+    sort?: 'score' | 'timestamp';
+    sort_dir?: 'asc' | 'desc';
+    count?: number;
+    page?: number;
+    include_all_channels?: boolean;
+    exclude_bots?: boolean;
+  } = {}): Promise<any> {
+    const params: Record<string, any> = {
+      module: 'messages',
+      query,
+      count: options.count || 20,
+      page: options.page || 1,
+      sort: options.sort || 'timestamp',
+      sort_dir: options.sort_dir || 'desc',
+      extracts: 1,
+      highlight: 1,
+      extra_message_data: 1,
+      search_only_my_channels: options.include_all_channels ? false : true,
+      search_exclude_bots: options.exclude_bots ?? false,
+    };
+
+    return this.request('search.modules.messages', params);
+  }
 }
 

@@ -6,6 +6,7 @@ import { createConversationsCommand } from './commands/conversations.ts';
 import { createMessagesCommand } from './commands/messages.ts';
 import { createSearchCommand } from './commands/search.ts';
 import { createUsersCommand } from './commands/users.ts';
+import { createFilesCommand } from './commands/files.ts';
 import { createUpdateCommand } from './commands/update.ts';
 import { checkForUpdates } from './lib/updater.ts';
 import chalk from 'chalk';
@@ -21,6 +22,7 @@ program
 program.addCommand(createAuthCommand());
 program.addCommand(createConversationsCommand());
 program.addCommand(createMessagesCommand());
+program.addCommand(createFilesCommand());
 program.addCommand(createSearchCommand());
 program.addCommand(createUsersCommand());
 program.addCommand(createUpdateCommand());

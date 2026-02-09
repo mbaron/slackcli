@@ -1,6 +1,8 @@
 import { Command } from 'commander';
+import { writeFile, access, mkdir } from 'fs/promises';
+import { join, resolve } from 'path';
 import { getAuthenticatedClient } from '../lib/auth.ts';
-import { error, formatChannelList, formatConversationHistory } from '../lib/formatter.ts';
+import { error, formatChannelList, formatConversationHistory, formatFileSize } from '../lib/formatter.ts';
 import type { SlackChannel, SlackMessage, SlackUser } from '../types/index.ts';
 import {
   ConversationListOutputSchema,
@@ -132,6 +134,8 @@ export function createConversationsCommand(): Command {
     .option('--limit <number>', 'Number of messages to return', '100')
     .option('--oldest <timestamp>', 'Start of time range')
     .option('--latest <timestamp>', 'End of time range')
+    .option('--download-files', 'Download file attachments from messages', false)
+    .option('--output-dir <path>', 'Directory to save downloaded files', '.')
     .option('--workspace <id|name>', 'Workspace to use')
     .action(async (channelId, options) => {
       const format = validateFormat(options.format);
@@ -210,6 +214,18 @@ export function createConversationsCommand(): Command {
             reply_count: msg.reply_count,
             reactions: msg.reactions?.map(r => ({ name: r.name, count: r.count })),
             bot_id: msg.bot_id,
+            files: msg.files?.map(f => ({
+              id: f.id,
+              name: f.name,
+              title: f.title,
+              mimetype: f.mimetype,
+              filetype: f.filetype,
+              size: f.size,
+              url_private: f.url_private,
+              url_private_download: f.url_private_download,
+              permalink: f.permalink,
+              mode: f.mode,
+            })),
           })),
           users: userIds.size > 0 ? Object.fromEntries(
             Array.from(users.entries()).map(([id, u]) => [id, {
@@ -221,9 +237,69 @@ export function createConversationsCommand(): Command {
           ) : undefined,
         };
 
+        // Download files if requested
+        if (options.downloadFiles) {
+          const allFiles = messages.flatMap(msg => msg.files || []);
+          if (allFiles.length > 0) {
+            const outputDir = resolve(options.outputDir);
+            await mkdir(outputDir, { recursive: true });
+            updateSpinner(spinner, `Downloading ${allFiles.length} file(s)...`);
+
+            const downloadedFiles: Array<{ file_id: string; name: string; path: string; size: number }> = [];
+
+            for (const file of allFiles) {
+              const downloadUrl = file.url_private_download || file.url_private;
+              if (!downloadUrl || file.mode === 'external') continue;
+
+              try {
+                updateSpinner(spinner, `Downloading ${file.name}...`);
+                const { buffer } = await client.downloadFile(downloadUrl);
+
+                // Handle filename collisions
+                let outputPath = join(outputDir, file.name);
+                let counter = 1;
+                while (true) {
+                  try {
+                    await access(outputPath);
+                    const ext = file.name.includes('.') ? '.' + file.name.split('.').pop() : '';
+                    const base = ext ? file.name.slice(0, -ext.length) : file.name;
+                    outputPath = join(outputDir, `${base}-${counter}${ext}`);
+                    counter++;
+                  } catch {
+                    break;
+                  }
+                }
+
+                await writeFile(outputPath, new Uint8Array(buffer));
+                downloadedFiles.push({
+                  file_id: file.id,
+                  name: file.name,
+                  path: outputPath,
+                  size: buffer.byteLength,
+                });
+              } catch (err: any) {
+                console.error(`Warning: Failed to download ${file.name}: ${err.message}`);
+              }
+            }
+
+            if (downloadedFiles.length > 0) {
+              outputData.downloaded_files = downloadedFiles;
+              succeedSpinner(spinner, `Found ${messages.length} messages, downloaded ${downloadedFiles.length} file(s)`);
+            }
+          }
+        }
+
         output(outputData, ConversationReadOutputSchema, format, (data) => {
-          // For pretty output, use existing formatter
-          return '\n' + formatConversationHistory(channelId, messages, users);
+          let result = '\n' + formatConversationHistory(channelId, messages, users);
+
+          if (data.downloaded_files && data.downloaded_files.length > 0) {
+            result += `\n📥 Downloaded ${data.downloaded_files.length} file(s):\n`;
+            data.downloaded_files.forEach(d => {
+              result += `  ${d.name} (${formatFileSize(d.size)}) -> ${d.path}\n`;
+            });
+          }
+
+          return result;
         });
       } catch (err: any) {
         failSpinner(spinner, 'Failed to fetch messages');

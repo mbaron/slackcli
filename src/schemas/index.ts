@@ -42,6 +42,20 @@ export const ConversationListOutputSchema = z.object({
 });
 export type ConversationListOutput = z.infer<typeof ConversationListOutputSchema>;
 
+// Slack file (shared)
+const SlackFileSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  title: z.string().optional(),
+  mimetype: z.string().optional(),
+  filetype: z.string().optional(),
+  size: z.number().optional(),
+  url_private: z.string().optional(),
+  url_private_download: z.string().optional(),
+  permalink: z.string().optional(),
+  mode: z.string().optional(),
+});
+
 // Conversations read output
 export const ConversationReadOutputSchema = z.object({
   channel_id: z.string(),
@@ -58,8 +72,15 @@ export const ConversationReadOutputSchema = z.object({
       count: z.number(),
     })).optional(),
     bot_id: z.string().optional(),
+    files: z.array(SlackFileSchema).optional(),
   })),
   users: z.record(z.string(), UserInfoSchema).optional(),
+  downloaded_files: z.array(z.object({
+    file_id: z.string(),
+    name: z.string(),
+    path: z.string(),
+    size: z.number(),
+  })).optional(),
 });
 export type ConversationReadOutput = z.infer<typeof ConversationReadOutputSchema>;
 
@@ -151,3 +172,41 @@ export const SearchMessagesOutputSchema = z.object({
   page_count: z.number(),
 });
 export type SearchMessagesOutput = z.infer<typeof SearchMessagesOutputSchema>;
+
+// File info output
+export const FileInfoOutputSchema = z.object({
+  file: SlackFileSchema.extend({
+    created: z.number().optional(),
+    user: z.string().optional(),
+  }),
+});
+export type FileInfoOutput = z.infer<typeof FileInfoOutputSchema>;
+
+// File list output
+export const FileListOutputSchema = z.object({
+  channel_id: z.string(),
+  files: z.array(SlackFileSchema.extend({
+    created: z.number().optional(),
+    user: z.string().optional(),
+  })),
+  total: z.number(),
+  page: z.number(),
+  page_count: z.number(),
+});
+export type FileListOutput = z.infer<typeof FileListOutputSchema>;
+
+// File download output
+export const FileDownloadOutputSchema = z.object({
+  downloads: z.array(z.object({
+    file_id: z.string(),
+    name: z.string(),
+    path: z.string(),
+    size: z.number(),
+    mimetype: z.string().optional(),
+  })),
+  errors: z.array(z.object({
+    file_id: z.string(),
+    error: z.string(),
+  })).optional(),
+});
+export type FileDownloadOutput = z.infer<typeof FileDownloadOutputSchema>;
