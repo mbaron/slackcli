@@ -40,6 +40,12 @@ yarn-error.log*
 *.tmp
 .temp/
 
+# Claude Code session data
+.claude/
+
+# Playwright CLI artifacts
+.playwright-cli/
+
 # Internal documents (not for public)
 prd.md
 PRD.md
