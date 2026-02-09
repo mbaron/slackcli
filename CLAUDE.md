@@ -29,3 +29,7 @@ bun run type-check   # TypeScript type checking
 **Workspace Storage**: Config stored in `~/.config/slackcli/workspaces.json`. Managed by `src/lib/workspaces.ts` which handles loading, saving, and workspace selection (by ID or name).
 
 **Types**: All TypeScript interfaces in `src/types/index.ts`. Key types are `WorkspaceConfig` (union of `StandardAuthConfig | BrowserAuthConfig`) and Slack API response types.
+
+## References
+
+**Slack API Documentation**: https://docs.slack.dev/
