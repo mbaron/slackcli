@@ -68,10 +68,25 @@ export function createFilesCommand(): Command {
         const response = await client.getFileInfo(fileId);
         const f = response.file;
 
+        // Fetch user info for the file uploader
+        let username: string | undefined;
+        if (f.user) {
+          try {
+            const usersResponse = await client.getUsersInfo([f.user]);
+            const user = usersResponse.users?.[0];
+            username = user?.name ? `@${user.name}` : undefined;
+          } catch (err) {
+            // Silently fail if user lookup fails
+          }
+        }
+
         succeedSpinner(spinner, 'File info retrieved');
 
         const outputData: FileInfoOutput = {
-          file: mapFileFields(f),
+          file: {
+            ...mapFileFields(f),
+            username,
+          },
         };
 
         output(outputData, FileInfoOutputSchema, format, (data) => {
@@ -266,11 +281,37 @@ export function createFilesCommand(): Command {
         const files = (response.files || []).map(mapFileFields);
         const paging = response.paging || {};
 
+        // Fetch user info for file uploaders
+        const userIds = new Set<string>();
+        files.forEach((f: any) => {
+          if (f.user) userIds.add(f.user);
+        });
+
+        const userMap = new Map<string, string>();
+        if (userIds.size > 0) {
+          try {
+            const usersResponse = await client.getUsersInfo(Array.from(userIds));
+            usersResponse.users?.forEach((u: any) => {
+              if (u.name) {
+                userMap.set(u.id, `@${u.name}`);
+              }
+            });
+          } catch (err) {
+            // Silently fail if user lookup fails
+          }
+        }
+
+        // Add username to files
+        const filesWithUsernames = files.map((f: any) => ({
+          ...f,
+          username: f.user ? userMap.get(f.user) : undefined,
+        }));
+
         succeedSpinner(spinner, `Found ${paging.total || files.length} file(s)`);
 
         const outputData: FileListOutput = {
           channel_id: channelId,
-          files,
+          files: filesWithUsernames,
           total: paging.total || files.length,
           page: paging.page || parseInt(options.page),
           page_count: paging.pages || 1,

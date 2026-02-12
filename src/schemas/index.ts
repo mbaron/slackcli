@@ -64,6 +64,7 @@ export const ConversationReadOutputSchema = z.object({
     ts: z.string(),
     thread_ts: z.string().optional(),
     user: z.string().optional(),
+    username: z.string().optional(), // Human-readable @handle
     text: z.string(),
     type: z.string(),
     reply_count: z.number().optional(),
@@ -182,6 +183,7 @@ export const FileInfoOutputSchema = z.object({
   file: SlackFileSchema.extend({
     created: z.number().optional(),
     user: z.string().optional(),
+    username: z.string().optional(), // Human-readable @handle of uploader
   }),
 });
 export type FileInfoOutput = z.infer<typeof FileInfoOutputSchema>;
@@ -192,6 +194,7 @@ export const FileListOutputSchema = z.object({
   files: z.array(SlackFileSchema.extend({
     created: z.number().optional(),
     user: z.string().optional(),
+    username: z.string().optional(), // Human-readable @handle of uploader
   })),
   total: z.number(),
   page: z.number(),

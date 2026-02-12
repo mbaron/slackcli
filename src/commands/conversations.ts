@@ -206,28 +206,35 @@ export function createConversationsCommand(): Command {
         const outputData: ConversationReadOutput = {
           channel_id: channelId,
           message_count: messages.length,
-          messages: messages.map(msg => ({
-            ts: msg.ts,
-            thread_ts: msg.thread_ts,
-            user: msg.user,
-            text: msg.text,
-            type: msg.type,
-            reply_count: msg.reply_count,
-            reactions: msg.reactions?.map(r => ({ name: r.name, count: r.count })),
-            bot_id: msg.bot_id,
-            files: msg.files?.map(f => ({
-              id: f.id,
-              name: f.name,
-              title: f.title,
-              mimetype: f.mimetype,
-              filetype: f.filetype,
-              size: f.size,
-              url_private: f.url_private,
-              url_private_download: f.url_private_download,
-              permalink: f.permalink,
-              mode: f.mode,
-            })),
-          })),
+          messages: messages.map(msg => {
+            // Get username for the message sender
+            const user = msg.user ? users.get(msg.user) : undefined;
+            const username = user?.name ? `@${user.name}` : undefined;
+
+            return {
+              ts: msg.ts,
+              thread_ts: msg.thread_ts,
+              user: msg.user,
+              username: username,
+              text: msg.text,
+              type: msg.type,
+              reply_count: msg.reply_count,
+              reactions: msg.reactions?.map(r => ({ name: r.name, count: r.count })),
+              bot_id: msg.bot_id,
+              files: msg.files?.map(f => ({
+                id: f.id,
+                name: f.name,
+                title: f.title,
+                mimetype: f.mimetype,
+                filetype: f.filetype,
+                size: f.size,
+                url_private: f.url_private,
+                url_private_download: f.url_private_download,
+                permalink: f.permalink,
+                mode: f.mode,
+              })),
+            };
+          }),
           users: userIds.size > 0 ? Object.fromEntries(
             Array.from(users.entries()).map(([id, u]) => [id, {
               id: u.id,
