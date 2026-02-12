@@ -19,7 +19,7 @@ import {
   updateSpinner,
   succeedSpinner,
   failSpinner,
-  addFormatOption,
+  addOutputOptions,
   validateFormat,
 } from '../lib/output.ts';
 
@@ -116,14 +116,14 @@ export function createConversationsCommand(): Command {
             user: ch.user_id,
           }));
           return '\n' + formatChannelList(channelList, users);
-        });
+        }, options.jq);
       } catch (err: any) {
         failSpinner(spinner, 'Failed to fetch conversations');
         error(err.message, 'Run "slackcli auth list" to check your authentication.');
         process.exit(1);
       }
     });
-  addFormatOption(listCmd);
+  addOutputOptions(listCmd);
 
   // Read conversation history
   const readCmd = conversations
@@ -309,14 +309,14 @@ export function createConversationsCommand(): Command {
           }
 
           return result;
-        });
+        }, options.jq);
       } catch (err: any) {
         failSpinner(spinner, 'Failed to fetch messages');
         error(err.message);
         process.exit(1);
       }
     });
-  addFormatOption(readCmd);
+  addOutputOptions(readCmd);
 
   return conversations;
 }

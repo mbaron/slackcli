@@ -14,7 +14,7 @@ import {
   updateSpinner,
   succeedSpinner,
   failSpinner,
-  addFormatOption,
+  addOutputOptions,
   validateFormat,
 } from '../lib/output.ts';
 import type { SlackClient } from '../lib/slack-client.ts';
@@ -328,14 +328,14 @@ export function createSearchCommand(): Command {
           }
 
           return result;
-        });
+        }, options.jq);
       } catch (err: any) {
         failSpinner(spinner, 'Search failed');
         error(err.message);
         process.exit(1);
       }
     });
-  addFormatOption(messagesCmd);
+  addOutputOptions(messagesCmd);
 
   return search;
 }

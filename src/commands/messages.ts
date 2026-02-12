@@ -15,7 +15,7 @@ import {
   updateSpinner,
   succeedSpinner,
   failSpinner,
-  addFormatOption,
+  addOutputOptions,
   validateFormat,
 } from '../lib/output.ts';
 
@@ -73,14 +73,14 @@ export function createMessagesCommand(): Command {
 
         output(outputData, MessageSendOutputSchema, format, (data) => {
           return `Message timestamp: ${data.ts}`;
-        });
+        }, options.jq);
       } catch (err: any) {
         failSpinner(spinner, 'Failed to send message');
         error(err.message);
         process.exit(1);
       }
     });
-  addFormatOption(sendCmd);
+  addOutputOptions(sendCmd);
 
   // Add reaction to message
   const reactCmd = messages
@@ -118,14 +118,14 @@ export function createMessagesCommand(): Command {
 
         output(outputData, MessageReactOutputSchema, format, (data) => {
           return `Added :${data.emoji}: to message ${data.timestamp}`;
-        });
+        }, options.jq);
       } catch (err: any) {
         failSpinner(spinner, 'Failed to add reaction');
         error(err.message);
         process.exit(1);
       }
     });
-  addFormatOption(reactCmd);
+  addOutputOptions(reactCmd);
 
   return messages;
 }

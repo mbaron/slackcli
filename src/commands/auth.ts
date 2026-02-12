@@ -26,7 +26,7 @@ import {
   createSpinner,
   succeedSpinner,
   failSpinner,
-  addFormatOption,
+  addOutputOptions,
   validateFormat,
 } from '../lib/output.ts';
 
@@ -145,13 +145,13 @@ export function createAuthCommand(): Command {
           });
 
           return result;
-        });
+        }, options.jq);
       } catch (err: any) {
         error('Failed to list workspaces', err.message);
         process.exit(1);
       }
     });
-  addFormatOption(listCmd);
+  addOutputOptions(listCmd);
 
   // Set default workspace
   auth
@@ -323,7 +323,7 @@ export function createAuthCommand(): Command {
               info(`Workspace ID: ${config.workspace_id}`);
             } else {
               // For json format, output the parsed data
-              output(outputData, ParseCurlOutputSchema, format, () => '');
+              output(outputData, ParseCurlOutputSchema, format, () => '', options.jq);
             }
           } catch (err: any) {
             failSpinner(spinner, 'Authentication failed');
@@ -351,7 +351,7 @@ export function createAuthCommand(): Command {
             result += `\n    --workspace-url="${data.workspace_url}"\n`;
 
             return result;
-          });
+          }, options.jq);
         }
       } catch (err: any) {
         error('Failed to parse cURL command', err.message);
@@ -362,7 +362,7 @@ export function createAuthCommand(): Command {
         process.exit(1);
       }
     });
-  addFormatOption(parseCurlCmd);
+  addOutputOptions(parseCurlCmd);
 
   return auth;
 }

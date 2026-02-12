@@ -22,7 +22,7 @@ import {
   updateSpinner,
   succeedSpinner,
   failSpinner,
-  addFormatOption,
+  addOutputOptions,
   validateFormat,
 } from '../lib/output.ts';
 
@@ -97,14 +97,14 @@ export function createFilesCommand(): Command {
           result += '\n';
 
           return result;
-        });
+        }, options.jq);
       } catch (err: any) {
         failSpinner(spinner, 'Failed to fetch file info');
         error(err.message);
         process.exit(1);
       }
     });
-  addFormatOption(infoCmd);
+  addOutputOptions(infoCmd);
 
   // files download <file-id...>
   const downloadCmd = files
@@ -221,7 +221,7 @@ export function createFilesCommand(): Command {
 
           result += '\n';
           return result;
-        });
+        }, options.jq);
 
         if (downloads.length === 0) {
           process.exit(1);
@@ -232,7 +232,7 @@ export function createFilesCommand(): Command {
         process.exit(1);
       }
     });
-  addFormatOption(downloadCmd);
+  addOutputOptions(downloadCmd);
 
   // files list <channel-id>
   const listCmd = files
@@ -301,14 +301,14 @@ export function createFilesCommand(): Command {
 
           result += '\n';
           return result;
-        });
+        }, options.jq);
       } catch (err: any) {
         failSpinner(spinner, 'Failed to fetch files');
         error(err.message);
         process.exit(1);
       }
     });
-  addFormatOption(listCmd);
+  addOutputOptions(listCmd);
 
   return files;
 }

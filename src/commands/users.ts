@@ -19,7 +19,7 @@ import {
   updateSpinner,
   succeedSpinner,
   failSpinner,
-  addFormatOption,
+  addOutputOptions,
   validateFormat,
 } from '../lib/output.ts';
 
@@ -172,14 +172,14 @@ export function createUsersCommand(): Command {
           }
 
           return result;
-        });
+        }, options.jq);
       } catch (err: any) {
         failSpinner(spinner, 'Failed to fetch users');
         error(err.message);
         process.exit(1);
       }
     });
-  addFormatOption(listCmd);
+  addOutputOptions(listCmd);
 
   // Search users
   const searchCmd = users
@@ -276,14 +276,14 @@ export function createUsersCommand(): Command {
           });
 
           return result;
-        });
+        }, options.jq);
       } catch (err: any) {
         failSpinner(spinner, 'Failed to search users');
         error(err.message);
         process.exit(1);
       }
     });
-  addFormatOption(searchCmd);
+  addOutputOptions(searchCmd);
 
   // Get user info
   const infoCmd = users
@@ -368,14 +368,14 @@ export function createUsersCommand(): Command {
           });
 
           return result;
-        });
+        }, options.jq);
       } catch (err: any) {
         failSpinner(spinner, 'Failed to fetch users');
         error(err.message);
         process.exit(1);
       }
     });
-  addFormatOption(infoCmd);
+  addOutputOptions(infoCmd);
 
   return users;
 }

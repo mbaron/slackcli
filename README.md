@@ -11,6 +11,7 @@ A fast, developer-friendly command-line interface tool for interacting with Slac
 - 🔍 **Message Search**: Full Slack search with query modifiers (from:, in:, has:, date filters)
 - 👥 **User Management**: List, search, and lookup users (single or batch)
 - 🎉 **Message Reactions**: Add emoji reactions to messages programmatically
+- 🔧 **jq Integration**: Filter and transform JSON output using jq syntax
 - 🚀 **Fast & Lightweight**: Built with Bun for blazing fast performance
 - 🔄 **Auto-Update**: Built-in self-update mechanism
 - 🎨 **Beautiful Output**: Colorful, user-friendly terminal output
@@ -256,6 +257,42 @@ slackcli conversations list --workspace=T1234567
 # Use specific workspace by name
 slackcli conversations list --workspace="My Team"
 ```
+
+### JSON Output and jq Filtering
+
+All commands support structured JSON output by default, with optional jq filtering for powerful data transformation:
+
+```bash
+# Get JSON output (default format)
+slackcli conversations list
+
+# Filter with jq - get just channel names
+slackcli conversations list --jq '.channels[].name'
+
+# Complex jq filters - get non-archived channels
+slackcli conversations list --jq '.channels[] | select(.is_archived == false) | .name'
+
+# Search messages and extract specific fields
+slackcli search messages "deployment" --jq '.messages[] | {user: .username, text: .text}'
+
+# Count results
+slackcli users list --jq '.users | length'
+
+# Format custom output
+slackcli users list --jq '.users[] | "\(.name): \(.email)"'
+
+# Combine with other tools
+slackcli search messages "error" --jq '.messages[].permalink' | xargs open
+```
+
+**Requirements:**
+- The `--jq` option requires [jq](https://jqlang.github.io/jq/) to be installed
+- Install jq:
+  - macOS: `brew install jq`
+  - Ubuntu/Debian: `sudo apt-get install jq`
+  - Windows: `choco install jq`
+
+**Note:** The `--jq` option only works with `--format=json` (the default format).
 
 ## Configuration
 

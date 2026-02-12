@@ -1,5 +1,6 @@
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import ora, { Ora } from 'ora';
+import { runJq } from './jq.ts';
 
 export type OutputFormat = 'json' | 'pretty' | 'schema';
 
@@ -13,16 +14,33 @@ export function output<T>(
   data: T,
   schema: AnyZodSchema,
   format: OutputFormat,
-  prettyFormatter: (data: T) => string
+  prettyFormatter: (data: T) => string,
+  jqExpr?: string
 ): void {
   switch (format) {
     case 'json':
-      console.log(JSON.stringify(data, null, 2));
+      if (jqExpr) {
+        // Apply jq filter to JSON data
+        try {
+          const filtered = runJq(data, jqExpr);
+          // Output without extra formatting since jq already formats
+          console.log(filtered.trim());
+        } catch (err: any) {
+          console.error(err.message);
+          process.exit(1);
+        }
+      } else {
+        console.log(JSON.stringify(data, null, 2));
+      }
       break;
     case 'schema':
       console.log(JSON.stringify(zodToJsonSchema(schema), null, 2));
       break;
     case 'pretty':
+      if (jqExpr) {
+        console.error('Error: --jq can only be used with --format=json (the default format)');
+        process.exit(1);
+      }
       console.log(prettyFormatter(data));
       break;
   }
@@ -81,6 +99,25 @@ export function addFormatOption(command: any): any {
     'Output format: json (default), pretty (human-readable), schema (JSON Schema)',
     'json'
   );
+}
+
+/**
+ * Add --jq option to a command
+ */
+export function addJqOption(command: any): any {
+  return command.option(
+    '--jq <expression>',
+    'Filter JSON output using jq syntax (requires jq to be installed)'
+  );
+}
+
+/**
+ * Add both --format and --jq options to a command (convenience method)
+ */
+export function addOutputOptions(command: any): any {
+  addFormatOption(command);
+  addJqOption(command);
+  return command;
 }
 
 /**
