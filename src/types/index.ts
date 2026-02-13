@@ -11,6 +11,7 @@ export interface StandardAuthConfig {
   auth_type: 'standard';
   token: string;
   token_type: TokenType;
+  allowed_targets?: string[]; // Optional list of allowed channel/user IDs for posting
 }
 
 export interface BrowserAuthConfig {
@@ -20,6 +21,7 @@ export interface BrowserAuthConfig {
   auth_type: 'browser';
   xoxd_token: string;
   xoxc_token: string;
+  allowed_targets?: string[]; // Optional list of allowed channel/user IDs for posting
 }
 
 export type WorkspaceConfig = StandardAuthConfig | BrowserAuthConfig;

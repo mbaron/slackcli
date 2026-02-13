@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { getAuthenticatedClient } from '../lib/auth.ts';
 import { success, error } from '../lib/formatter.ts';
+import { formatTimestampForJson } from '../lib/date-formatter.ts';
 import {
   MessageSendOutputSchema,
   MessageReactOutputSchema,
@@ -31,6 +32,22 @@ export function createMessagesCommand(): Command {
     .requiredOption('--message <text>', 'Message text content')
     .option('--thread-ts <timestamp>', 'Send as reply to thread')
     .option('--workspace <id|name>', 'Workspace to use')
+    .addHelpText('after', `
+Configuration:
+  To restrict message posting to specific channels/users, add an "allowed_targets"
+  array to your workspace config at ~/.config/slackcli/workspaces.json:
+
+  {
+    "workspaces": {
+      "T123456": {
+        ...
+        "allowed_targets": ["C123456", "U789012", "G345678"]
+      }
+    }
+  }
+
+  If allowed_targets is set, messages can only be sent to channels/users in that list.
+  If allowed_targets is not set or empty, messages can be sent anywhere.`)
     .action(async (options) => {
       const format = validateFormat(options.format);
 
@@ -44,6 +61,19 @@ export function createMessagesCommand(): Command {
 
       try {
         const client = await getAuthenticatedClient(options.workspace);
+
+        // Check if allowed_targets is configured and validate recipient
+        if (client.config.allowed_targets && client.config.allowed_targets.length > 0) {
+          const isAllowed = client.config.allowed_targets.includes(options.recipientId);
+          if (!isAllowed) {
+            failSpinner(spinner, 'Target not allowed');
+            error(`Posting to ${options.recipientId} is not allowed by workspace configuration.`);
+            error(`\nAllowed targets: ${client.config.allowed_targets.join(', ')}`);
+            error(`\nTo modify allowed targets, edit ~/.config/slackcli/workspaces.json`);
+            error(`See 'slackcli messages send --help' for configuration details.`);
+            process.exit(1);
+          }
+        }
 
         // Check if recipient is a user ID (starts with U) and needs DM opened
         let channelId = options.recipientId;
@@ -65,6 +95,7 @@ export function createMessagesCommand(): Command {
           ok: true,
           channel: channelId,
           ts: response.ts,
+          ts_formatted: formatTimestampForJson(response.ts),
           message: response.message ? {
             text: response.message.text || options.message,
             ts: response.message.ts || response.ts,
@@ -113,6 +144,7 @@ export function createMessagesCommand(): Command {
           ok: true,
           channel: options.channelId,
           timestamp: options.timestamp,
+          timestamp_formatted: formatTimestampForJson(options.timestamp),
           emoji: options.emoji,
         };
 

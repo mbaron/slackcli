@@ -2,21 +2,26 @@ import { WebClient } from '@slack/web-api';
 import type { WorkspaceConfig, SlackAuthTestResponse } from '../types/index.ts';
 
 export class SlackClient {
-  private config: WorkspaceConfig;
+  private _config: WorkspaceConfig;
   private webClient?: WebClient;
 
   constructor(config: WorkspaceConfig) {
-    this.config = config;
-    
+    this._config = config;
+
     // Only use WebClient for standard auth
     if (config.auth_type === 'standard') {
       this.webClient = new WebClient(config.token);
     }
   }
 
+  // Public getter for config
+  get config(): WorkspaceConfig {
+    return this._config;
+  }
+
   // Make API request (handles both auth types)
   async request(method: string, params: Record<string, any> = {}): Promise<any> {
-    if (this.config.auth_type === 'standard') {
+    if (this._config.auth_type === 'standard') {
       return this.standardRequest(method, params);
     } else {
       return this.browserRequest(method, params);
@@ -39,20 +44,20 @@ export class SlackClient {
 
   // Browser token request (custom implementation)
   private async browserRequest(method: string, params: Record<string, any>): Promise<any> {
-    if (this.config.auth_type !== 'browser') {
+    if (this._config.auth_type !== 'browser') {
       throw new Error('Invalid auth type');
     }
 
-    const url = `${this.config.workspace_url}/api/${method}`;
+    const url = `${this._config.workspace_url}/api/${method}`;
     
     const formBody = new URLSearchParams({
-      token: this.config.xoxc_token,
+      token: this._config.xoxc_token,
       ...params,
     });
 
     try {
       // URL-encode the xoxd token for the cookie
-      const encodedXoxdToken = encodeURIComponent(this.config.xoxd_token);
+      const encodedXoxdToken = encodeURIComponent(this._config.xoxd_token);
       
       const response = await fetch(url, {
         method: 'POST',
@@ -231,10 +236,10 @@ export class SlackClient {
   async downloadFile(url: string): Promise<{ buffer: ArrayBuffer; contentType: string }> {
     const headers: Record<string, string> = {};
 
-    if (this.config.auth_type === 'standard') {
-      headers['Authorization'] = `Bearer ${this.config.token}`;
+    if (this._config.auth_type === 'standard') {
+      headers['Authorization'] = `Bearer ${this._config.token}`;
     } else {
-      const encodedXoxdToken = encodeURIComponent(this.config.xoxd_token);
+      const encodedXoxdToken = encodeURIComponent(this._config.xoxd_token);
       headers['Cookie'] = `d=${encodedXoxdToken}`;
       headers['Origin'] = 'https://app.slack.com';
       headers['User-Agent'] = 'Mozilla/5.0 (compatible; SlackCLI/0.1.0)';
