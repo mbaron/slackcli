@@ -4,6 +4,7 @@ import { join, resolve } from 'path';
 import { tmpdir } from 'os';
 import { getAuthenticatedClient } from '../lib/auth.ts';
 import { error, formatChannelList, formatConversationHistory, formatFileSize } from '../lib/formatter.ts';
+import { formatTimestampForJson } from '../lib/date-formatter.ts';
 import type { SlackChannel, SlackMessage, SlackUser } from '../types/index.ts';
 import {
   ConversationListOutputSchema,
@@ -213,6 +214,7 @@ export function createConversationsCommand(): Command {
 
             return {
               ts: msg.ts,
+              ts_formatted: formatTimestampForJson(msg.ts),
               thread_ts: msg.thread_ts,
               user: msg.user,
               username: username,

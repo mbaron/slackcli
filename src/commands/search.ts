@@ -1,7 +1,8 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { getAuthenticatedClient } from '../lib/auth.ts';
-import { error, warning } from '../lib/formatter.ts';
+import { error, warning, formatTimestamp } from '../lib/formatter.ts';
+import { formatTimestampForJson } from '../lib/date-formatter.ts';
 import {
   SearchMessagesOutputSchema,
   type SearchMessagesOutput,
@@ -21,6 +22,11 @@ import type { SlackClient } from '../lib/slack-client.ts';
 
 type MessageMatch = {
   ts: string;
+  ts_formatted?: {
+    timestamp_unix: number;
+    timestamp_iso: string;
+    relative_time: string;
+  };
   text: string;
   username?: string;
   user?: string;
@@ -50,6 +56,7 @@ function formatMessageMatch(match: any): MessageMatch {
 
   return {
     ts: match.ts,
+    ts_formatted: formatTimestampForJson(match.ts),
     text: match.text || '',
     username: match.username,
     user: match.user,
@@ -64,10 +71,6 @@ function formatMessageMatch(match: any): MessageMatch {
   };
 }
 
-function formatTimestamp(ts: string): string {
-  const date = new Date(parseFloat(ts) * 1000);
-  return date.toLocaleString();
-}
 
 // Resolve @username in from: modifiers to user IDs
 // e.g., "from:@bill" -> "from:<@U04TXH1JFEK>"
@@ -238,6 +241,7 @@ export function createSearchCommand(): Command {
 
               return {
                 ts: msg.ts,
+                ts_formatted: formatTimestampForJson(msg.ts),
                 text: msg.text || '',
                 username: msg.username,
                 user: msg.user,

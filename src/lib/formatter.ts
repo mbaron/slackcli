@@ -1,19 +1,10 @@
 import chalk from 'chalk';
 import type { SlackChannel, SlackFile, SlackMessage, SlackUser, WorkspaceConfig } from '../types/index.ts';
+import { formatTimestampPretty } from './date-formatter.ts';
 
-// Format timestamp to human-readable date
+// Format timestamp to human-readable date with relative time
 export function formatTimestamp(ts: string): string {
-  const timestamp = parseFloat(ts) * 1000;
-  const date = new Date(timestamp);
-  return date.toLocaleString('en-US', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
+  return formatTimestampPretty(ts);
 }
 
 // Format workspace info

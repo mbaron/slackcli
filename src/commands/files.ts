@@ -5,6 +5,7 @@ import { tmpdir } from 'os';
 import chalk from 'chalk';
 import { getAuthenticatedClient } from '../lib/auth.ts';
 import { error, formatFileSize, formatTimestamp } from '../lib/formatter.ts';
+import { formatTimestampForJson } from '../lib/date-formatter.ts';
 import type { SlackFile } from '../types/index.ts';
 import {
   FileInfoOutputSchema,
@@ -85,6 +86,7 @@ export function createFilesCommand(): Command {
         const outputData: FileInfoOutput = {
           file: {
             ...mapFileFields(f),
+            created_formatted: f.created ? formatTimestampForJson(f.created) : undefined,
             username,
           },
         };
@@ -301,10 +303,11 @@ export function createFilesCommand(): Command {
           }
         }
 
-        // Add username to files
+        // Add username and formatted created timestamp to files
         const filesWithUsernames = files.map((f: any) => ({
           ...f,
           username: f.user ? userMap.get(f.user) : undefined,
+          created_formatted: f.created ? formatTimestampForJson(f.created) : undefined,
         }));
 
         succeedSpinner(spinner, `Found ${paging.total || files.length} file(s)`);

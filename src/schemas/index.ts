@@ -62,6 +62,11 @@ export const ConversationReadOutputSchema = z.object({
   message_count: z.number(),
   messages: z.array(z.object({
     ts: z.string(),
+    ts_formatted: z.object({
+      timestamp_unix: z.number(),
+      timestamp_iso: z.string(),
+      relative_time: z.string(),
+    }).optional(),
     thread_ts: z.string().optional(),
     user: z.string().optional(),
     username: z.string().optional(), // Human-readable @handle
@@ -90,6 +95,11 @@ export const MessageSendOutputSchema = z.object({
   ok: z.boolean(),
   channel: z.string(),
   ts: z.string(),
+  ts_formatted: z.object({
+    timestamp_unix: z.number(),
+    timestamp_iso: z.string(),
+    relative_time: z.string(),
+  }).optional(),
   message: z.object({
     text: z.string(),
     ts: z.string(),
@@ -102,6 +112,11 @@ export const MessageReactOutputSchema = z.object({
   ok: z.boolean(),
   channel: z.string(),
   timestamp: z.string(),
+  timestamp_formatted: z.object({
+    timestamp_unix: z.number(),
+    timestamp_iso: z.string(),
+    relative_time: z.string(),
+  }).optional(),
   emoji: z.string(),
 });
 export type MessageReactOutput = z.infer<typeof MessageReactOutputSchema>;
@@ -154,6 +169,11 @@ export type UserInfoOutput = z.infer<typeof UserInfoOutputSchema>;
 // Search message match
 const SearchMessageMatchSchema = z.object({
   ts: z.string(),
+  ts_formatted: z.object({
+    timestamp_unix: z.number(),
+    timestamp_iso: z.string(),
+    relative_time: z.string(),
+  }).optional(),
   text: z.string(),
   username: z.string().optional(),
   user: z.string().optional(),
@@ -182,6 +202,11 @@ export type SearchMessagesOutput = z.infer<typeof SearchMessagesOutputSchema>;
 export const FileInfoOutputSchema = z.object({
   file: SlackFileSchema.extend({
     created: z.number().optional(),
+    created_formatted: z.object({
+      timestamp_unix: z.number(),
+      timestamp_iso: z.string(),
+      relative_time: z.string(),
+    }).optional(),
     user: z.string().optional(),
     username: z.string().optional(), // Human-readable @handle of uploader
   }),
@@ -193,6 +218,11 @@ export const FileListOutputSchema = z.object({
   channel_id: z.string(),
   files: z.array(SlackFileSchema.extend({
     created: z.number().optional(),
+    created_formatted: z.object({
+      timestamp_unix: z.number(),
+      timestamp_iso: z.string(),
+      relative_time: z.string(),
+    }).optional(),
     user: z.string().optional(),
     username: z.string().optional(), // Human-readable @handle of uploader
   })),
