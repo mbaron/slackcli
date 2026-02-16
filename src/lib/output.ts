@@ -27,6 +27,9 @@ export function output<T>(
           console.log(filtered.trim());
         } catch (err: any) {
           console.error(err.message);
+          console.error('\n📋 Expected schema for this command output:\n');
+          console.error(JSON.stringify(zodToJsonSchema(schema), null, 2));
+          console.error('\nTip: Use --format=schema to see the full schema without running the command.');
           process.exit(1);
         }
       } else {
