@@ -86,7 +86,7 @@ export function createConversationsCommand(): Command {
 
         // Build output data
         const outputData: ConversationListOutput = {
-          channels: channels.map(ch => ({
+          conversations: channels.map(ch => ({
             id: ch.id,
             name: ch.name || null,
             type: getChannelType(ch),
@@ -106,7 +106,7 @@ export function createConversationsCommand(): Command {
 
         output(outputData, ConversationListOutputSchema, format, (data) => {
           // Convert back to the format expected by formatChannelList
-          const channelList: SlackChannel[] = data.channels.map(ch => ({
+          const channelList: SlackChannel[] = data.conversations.map(ch => ({
             id: ch.id,
             name: ch.name || undefined,
             is_im: ch.type === 'im',

@@ -30,7 +30,7 @@ const UserInfoSchema = z.object({
 
 // Conversations list output
 export const ConversationListOutputSchema = z.object({
-  channels: z.array(z.object({
+  conversations: z.array(z.object({
     id: z.string(),
     name: z.string().nullable(),
     type: z.enum(['public_channel', 'private_channel', 'im', 'mpim']),
